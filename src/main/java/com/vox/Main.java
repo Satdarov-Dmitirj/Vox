@@ -1,37 +1,51 @@
 package com.vox;
 
 import com.vox.recognizer.SpeechToText;
-import com.vox.command.CommandParser;
-import com.vox.command.CommandExecutor;
+import com.vox.command.CommandRegistry;
+import com.vox.command.VoiceCommand;
+import com.vox.command.WakeWordDetector;
+
+import java.util.Optional;
 
 public class Main {
-    private static final String[] WAKE_WORDS = {"вокс", "бокс"};
-
     public static void main(String[] args) throws Exception {
         SpeechToText stt = new SpeechToText("src/main/resources/vosk-model-small-ru-0.22");
-        CommandParser parser = new CommandParser();
-        CommandExecutor executor = new CommandExecutor();
+        CommandRegistry registry = new CommandRegistry();
+        WakeWordDetector wakeWordDetector = new WakeWordDetector("вокс", "бокс");
 
-        stt.listen(text -> {
-            System.out.println("Услышал: " + text); //.
-
-            String lower = text.toLowerCase();
-            String matchedWakeWord = null;
-            for (String wake : WAKE_WORDS) {
-                if (lower.contains(wake)) {
-                    matchedWakeWord = wake;
-                    break;
-                }
+        Thread listenerThread = new Thread(() -> {
+            try {
+                stt.listen(text -> handleText(text, registry, wakeWordDetector));
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            if (matchedWakeWord == null) {
-                return;
-            }
-
-            String command = lower.substring(lower.indexOf(matchedWakeWord) + matchedWakeWord.length()).trim();
-            System.out.println("Команда после wake word: " + command);
-
-            String action = parser.parse(command);
-            executor.execute(action);
         });
+        listenerThread.setDaemon(true);
+        listenerThread.start();
+
+        System.out.println("Vox запущен. Нажми Enter, чтобы завершить работу.");
+        System.in.read();
+    }
+
+    private static void handleText(String text, CommandRegistry registry, WakeWordDetector wakeWordDetector) {
+        System.out.println("Услышал: " + text);
+
+        Optional<String> commandText = wakeWordDetector.extractCommand(text);
+        if (commandText.isEmpty()) {
+            return;
+        }
+        System.out.println("Команда после wake word: " + commandText.get());
+
+        VoiceCommand command = registry.findCommand(commandText.get());
+        if (command == null) {
+            System.out.println("Не понял команду");
+            return;
+        }
+
+        try {
+            command.execute();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
