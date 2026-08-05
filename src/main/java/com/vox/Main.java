@@ -13,7 +13,7 @@ public class Main {
         CommandExecutor executor = new CommandExecutor();
 
         stt.listen(text -> {
-            System.out.println("Услышал: " + text);
+            System.out.println("Услышал: " + text); //.
 
             String lower = text.toLowerCase();
             String matchedWakeWord = null;
