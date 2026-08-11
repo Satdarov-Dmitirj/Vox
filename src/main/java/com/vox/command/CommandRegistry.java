@@ -5,32 +5,35 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class CommandRegistry {
-    private final Map<String, VoiceCommand> commands = new LinkedHashMap<>();
+    private final Map<String, VoiceCommand> byKeyword = new LinkedHashMap<>();
+    private final Map<String, VoiceCommand> byAction = new LinkedHashMap<>();
 
     public CommandRegistry() {
         String home = System.getProperty("user.home");
 
-        // папки
-        commands.put("загрузки", new OpenFolderCommand(new File(home + "/Downloads")));
-        commands.put("документы", new OpenFolderCommand(new File(home + "/Documents")));
-        commands.put("рабочий стол", new OpenFolderCommand(resolveDesktop(home)));
-        commands.put("изображения", new OpenFolderCommand(new File(home + "/Pictures")));
+        register("загрузки", "open_downloads", new OpenFolderCommand(resolveFolder(home, "Downloads", "Загрузки")));
+        register("документы", "open_documents", new OpenFolderCommand(resolveFolder(home, "Documents", "Документы")));
+        register("рабочий стол", "open_desktop", new OpenFolderCommand(resolveFolder(home, "Desktop", "Рабочий стол")));
+        register("изображения", "open_pictures", new OpenFolderCommand(resolveFolder(home, "Pictures", "Изображения")));
 
-        // программы
-        commands.put("браузер", new RunProcessCommand("cmd /c start chrome"));
-        commands.put("блокнот", new RunProcessCommand("notepad.exe"));
-        commands.put("калькулятор", new RunProcessCommand("calc.exe"));
-        commands.put("проводник", new RunProcessCommand("explorer.exe"));
+        register("браузер", "open_browser", new RunProcessCommand("cmd /c start chrome"));
+        register("блокнот", "open_notepad", new RunProcessCommand("notepad.exe"));
+        register("калькулятор", "open_calculator", new RunProcessCommand("calc.exe"));
+        register("проводник", "open_explorer", new RunProcessCommand("explorer.exe"));
 
-        // система
-        commands.put("выключи компьютер", new RunProcessCommand("shutdown /s /t 10"));
-        commands.put("перезагрузи", new RunProcessCommand("shutdown /r /t 10"));
-        commands.put("заблокируй", new RunProcessCommand("rundll32.exe user32.dll,LockWorkStation"));
+        register("выключи компьютер", "shutdown", new RunProcessCommand("shutdown /s /t 10"));
+        register("перезагрузи", "restart", new RunProcessCommand("shutdown /r /t 10"));
+        register("заблокируй", "lock", new RunProcessCommand("rundll32.exe user32.dll,LockWorkStation"));
+    }
+
+    private void register(String keyword, String action, VoiceCommand command) {
+        byKeyword.put(keyword, command);
+        byAction.put(action, command);
     }
 
     public VoiceCommand findCommand(String text) {
         String lower = text.toLowerCase();
-        for (Map.Entry<String, VoiceCommand> entry : commands.entrySet()) {
+        for (Map.Entry<String, VoiceCommand> entry : byKeyword.entrySet()) {
             if (lower.contains(entry.getKey())) {
                 return entry.getValue();
             }
@@ -38,14 +41,19 @@ public class CommandRegistry {
         return null;
     }
 
-    private File resolveDesktop(String home) {
-        File plain = new File(home + "/Desktop");
+    public VoiceCommand findByAction(String action) {
+        return byAction.get(action);
+    }
+
+    // проверяем обычный путь, потом OneDrive (англ. и рус. название папки)
+    private File resolveFolder(String home, String enName, String ruName) {
+        File plain = new File(home + "/" + enName);
         if (plain.exists()) return plain;
 
-        File oneDriveEn = new File(home + "/OneDrive/Desktop");
+        File oneDriveEn = new File(home + "/OneDrive/" + enName);
         if (oneDriveEn.exists()) return oneDriveEn;
 
-        File oneDriveRu = new File(home + "/OneDrive/Рабочий стол");
+        File oneDriveRu = new File(home + "/OneDrive/" + ruName);
         if (oneDriveRu.exists()) return oneDriveRu;
 
         return plain;
