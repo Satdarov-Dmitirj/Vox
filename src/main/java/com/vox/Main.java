@@ -4,6 +4,7 @@ import com.vox.recognizer.SpeechToText;
 import com.vox.command.CommandRegistry;
 import com.vox.command.VoiceCommand;
 import com.vox.command.WakeWordDetector;
+import com.vox.speaker.TextToSpeech;
 
 import java.util.Optional;
 
@@ -12,10 +13,11 @@ public class Main {
         SpeechToText stt = new SpeechToText("src/main/resources/vosk-model-small-ru-0.22");
         CommandRegistry registry = new CommandRegistry();
         WakeWordDetector wakeWordDetector = new WakeWordDetector("вокс", "бокс");
+        TextToSpeech tts = new TextToSpeech();
 
         Thread listenerThread = new Thread(() -> {
             try {
-                stt.listen(text -> handleText(text, registry, wakeWordDetector));
+                stt.listen(text -> handleText(text, registry, wakeWordDetector, tts));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -27,7 +29,8 @@ public class Main {
         System.in.read();
     }
 
-    private static void handleText(String text, CommandRegistry registry, WakeWordDetector wakeWordDetector) {
+    private static void handleText(String text, CommandRegistry registry,
+                                   WakeWordDetector wakeWordDetector, TextToSpeech tts) {
         System.out.println("Услышал: " + text);
 
         Optional<String> commandText = wakeWordDetector.extractCommand(text);
@@ -39,13 +42,16 @@ public class Main {
         VoiceCommand command = registry.findCommand(commandText.get());
         if (command == null) {
             System.out.println("Не понял команду");
+            tts.speak("Не поняла команду");
             return;
         }
 
         try {
             command.execute();
+            tts.speak("Выполняю");
         } catch (Exception e) {
             e.printStackTrace();
+            tts.speak("Не получилось выполнить");
         }
     }
 }
