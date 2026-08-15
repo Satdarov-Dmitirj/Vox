@@ -45,7 +45,6 @@ public class CommandRegistry {
         return byAction.get(action);
     }
 
-    // проверяем обычный путь, потом OneDrive (англ. и рус. название папки)
     private File resolveFolder(String home, String enName, String ruName) {
         File plain = new File(home + "/" + enName);
         if (plain.exists()) return plain;

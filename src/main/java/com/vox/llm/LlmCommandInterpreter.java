@@ -10,7 +10,7 @@ public class LlmCommandInterpreter {
     private final HttpClient client = HttpClient.newHttpClient();
     private static final String OLLAMA_URL = "http://localhost:11434/api/generate";
 
-    private static final String SYSTEM_PROMPT = """
+    private static final String COMMAND_PROMPT = """
             Ты — парсер голосовых команд для компьютера.
             Верни ТОЛЬКО одно слово — действие, без пояснений и без кавычек.
             Доступные действия: open_downloads, open_documents, open_desktop, open_pictures,
@@ -21,26 +21,41 @@ public class LlmCommandInterpreter {
             Фраза: "%s"
             Действие:""";
 
+    private static final String CHAT_PROMPT = """
+            Ты — голосовой ассистент по имени Вокс. Отвечай кратко (1-3 предложения),
+            дружелюбно, на русском языке, без markdown-разметки — ответ будет озвучен голосом.
+
+            Вопрос: "%s"
+            Ответ:""";
+
     public String interpret(String userPhrase) {
+        String raw = callOllama(COMMAND_PROMPT.formatted(userPhrase));
+        return cleanAction(raw);
+    }
+
+    public String chat(String userPhrase) {
+        String raw = callOllama(CHAT_PROMPT.formatted(userPhrase));
+        return raw.trim();
+    }
+
+    private String callOllama(String prompt) {
         try {
-            String prompt = SYSTEM_PROMPT.formatted(userPhrase);
             String jsonBody = """
                     {"model": "llama3.2", "prompt": %s, "stream": false}
                     """.formatted(quoteJson(prompt));
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(OLLAMA_URL))
-                    .timeout(Duration.ofSeconds(15))
+                    .timeout(Duration.ofSeconds(30))
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
                     .build();
 
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-            String rawAnswer = extractField(response.body(), "response");
-            return cleanAction(rawAnswer);
+            return extractField(response.body(), "response");
         } catch (Exception e) {
             e.printStackTrace();
-            return "unknown";
+            return "";
         }
     }
 

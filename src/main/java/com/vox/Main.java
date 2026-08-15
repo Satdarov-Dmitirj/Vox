@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        SpeechToText stt = new SpeechToText("src/main/resources/vosk-model-small-ru-0.22");
+        SpeechToText stt = new SpeechToText("src/main/resources/vosk-model-ru-0.42");
         CommandRegistry registry = new CommandRegistry();
         WakeWordDetector wakeWordDetector = new WakeWordDetector("вокс", "бокс");
         TextToSpeech tts = new TextToSpeech();
@@ -39,28 +39,36 @@ public class Main {
         if (commandText.isEmpty()) {
             return;
         }
-        System.out.println("Команда после wake word: " + commandText.get());
+        String phrase = commandText.get();
+        System.out.println("Команда после wake word: " + phrase);
 
-        VoiceCommand command = registry.findCommand(commandText.get());
+        VoiceCommand command = registry.findCommand(phrase);
 
         if (command == null) {
-            String action = llm.interpret(commandText.get());
+            String action = llm.interpret(phrase);
             System.out.println("LLM определил действие: " + action);
-            command = registry.findByAction(action);
+            if (!action.equals("unknown")) {
+                command = registry.findByAction(action);
+            }
         }
 
-        if (command == null) {
-            System.out.println("Не понял команду");
-            tts.speak("Не поняла команду");
+        if (command != null) {
+            try {
+                command.execute();
+                tts.speak("Выполняю");
+            } catch (Exception e) {
+                e.printStackTrace();
+                tts.speak("Не получилось выполнить");
+            }
             return;
         }
 
-        try {
-            command.execute();
-            tts.speak("Выполняю");
-        } catch (Exception e) {
-            e.printStackTrace();
-            tts.speak("Не получилось выполнить");
+        String reply = llm.chat(phrase);
+        System.out.println("Ответ LLM: " + reply);
+        if (!reply.isBlank()) {
+            tts.speak(reply);
+        } else {
+            tts.speak("Извини, не поняла");
         }
     }
 }
