@@ -8,6 +8,8 @@ import com.vox.speaker.TextToSpeech;
 import com.vox.llm.LlmCommandInterpreter;
 
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -17,9 +19,12 @@ public class Main {
         TextToSpeech tts = new TextToSpeech();
         LlmCommandInterpreter llm = new LlmCommandInterpreter();
 
+        ExecutorService commandExecutor = Executors.newSingleThreadExecutor();
+
         Thread listenerThread = new Thread(() -> {
             try {
-                stt.listen(text -> handleText(text, registry, wakeWordDetector, tts, llm));
+                stt.listen(text -> commandExecutor.submit(() ->
+                        handleText(text, registry, wakeWordDetector, tts, llm)));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -29,6 +34,7 @@ public class Main {
 
         System.out.println("Vox запущен. Нажми Enter, чтобы завершить работу.");
         System.in.read();
+        commandExecutor.shutdownNow();
     }
 
     private static void handleText(String text, CommandRegistry registry, WakeWordDetector wakeWordDetector,

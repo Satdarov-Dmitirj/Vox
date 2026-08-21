@@ -41,7 +41,7 @@ public class LlmCommandInterpreter {
     private String callOllama(String prompt) {
         try {
             String jsonBody = """
-                    {"model": "llama3.2", "prompt": %s, "stream": false}
+                    {"model": "llama3.2", "prompt": %s, "stream": false, "keep_alive": "30m"}
                     """.formatted(quoteJson(prompt));
 
             HttpRequest request = HttpRequest.newBuilder()
